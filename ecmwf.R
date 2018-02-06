@@ -54,7 +54,8 @@ rad[rad==radfv]<-NA
 #scaling, centering
 rad<-rad*radscale+radoffset
 
-timedf$rad<-rad
+#moving to GJ/m2
+timedf$rad<-rad/1000000
 rad<-NULL
 
 close.nc(ncra)
@@ -90,16 +91,16 @@ timedft$t2m<-t2m
 t2m<-NULL
 
 #handling HUMID
-d2moffset<-att.get.nc(ncra,"d2m","add_offset")
-d2mscale<-att.get.nc(ncra,"d2m","scale_factor")
-d2mna<-att.get.nc(ncra,"d2m","missing_value")
-d2mfv<-att.get.nc(ncra,"d2m","_FillValue")
+d2moffset<-att.get.nc(t2nc,"d2m","add_offset")
+d2mscale<-att.get.nc(t2nc,"d2m","scale_factor")
+d2mna<-att.get.nc(t2nc,"d2m","missing_value")
+d2mfv<-att.get.nc(t2nc,"d2m","_FillValue")
 
-d2m<-var.get.nc(ncra,"d2m")
+d2m<-var.get.nc(t2nc,"d2m")
 d2m[d2m==d2mna]<-NA
 d2m[d2m==d2mfv]<-NA
-#scaling, centering
-d2m<-d2m*d2mscale+d2moffset
+#scaling, centering and moving to celsius
+d2m<-d2m*d2mscale+d2moffset  - 273.15 
 
 timedft$d2m<-d2m
 d2m<-NULL
@@ -124,13 +125,13 @@ u10<-u10*u10scale+u10offset
 timedft$u10<-u10
 u10<-NULL
 
-#handling HUMID
-v10offset<-att.get.nc(ncra,"v10","add_offset")
-v10scale<-att.get.nc(ncra,"v10","scale_factor")
-v10na<-att.get.nc(ncra,"v10","missing_value")
-v10fv<-att.get.nc(ncra,"v10","_FillValue")
+#handling meridional
+v10offset<-att.get.nc(t2nc,"v10","add_offset")
+v10scale<-att.get.nc(t2nc,"v10","scale_factor")
+v10na<-att.get.nc(t2nc,"v10","missing_value")
+v10fv<-att.get.nc(t2nc,"v10","_FillValue")
 
-v10<-var.get.nc(ncra,"v10")
+v10<-var.get.nc(t2nc,"v10")
 v10[v10==v10na]<-NA
 v10[v10==v10fv]<-NA
 #scaling, centering
@@ -158,19 +159,74 @@ headMeteo<-data.frame(data=timeFrames[order(objTF)],
 futmeteo<-matrix(rep(NA,times=(7*length(headMeteo[,1]))),ncol=7)
 
 
+scumulo<-function(x){
+#	soglia<-(24/length(x))*0.1
+#	gradino<-rep(NA,length(x))
+#	gradino[1]<-x[1]
+#	for(enne in 2:length(x)){
+#		if(gradino[enne-1]<soglia){
+#			gradino[enne]<-x[enne]
+#		}else{
+#		gradino[enne]<-max(x[enne]-x[enne-1],0)	
+#		}
+#	}
+#	return(sum(gradino))
+	return(sum(x[c(length(x),length(x)/2)]))
+}
+
+dew2urZ<-function(vtem,vtdp){
+	#not working!!!
+	relHum<-rep(NA,length(vtem))
+	for(step in 1:length(vtem)){
+		tem<-vtem[step]
+		tdp<-vtdp[step]
+		#enhancing from Magnus formula to Buck, Arden L. (1981) equation (error <=0.06%)
+		if(tem>=0){
+			a<-6.1121
+			b<-17.368
+			c<-238.88
+		}else{
+			a<-6.1121
+			b<-17.966
+			c<-247.15
+		}
+		
+		actVapPr<-exp((tdp*b)/(tdp+c))*a
+		satVapPr<-a*exp(b*tem/(tem+c))
+		relHum[step]<-actVapPr/satVapPr
+	
+	}
+	return(relHum)
+}
+
+
+dew2ur<-function(vtem,vtdp){
+	#100*(EXP((17.625*TD)/(243.04+TD))/EXP((17.625*T)/(243.04+T)))
+	relHum<-rep(NA,length(vtem))
+	b<-	17.625
+	c<- 243.04
+	for(step in 1:length(vtem)){
+		tem<-vtem[step]
+		tdp<-vtdp[step]
+		relHum[step]<-100*(exp((b*tdp)/(c+tdp))/exp((b*tem)/(c+tem)))
+	}
+	return(relHum)
+}
+
 
 giornaliero<-function(anno,giorno){
 		#subsetting the required data
 		rara<-timedf[timedf$anno==anno&timedf$doy==giorno,]
 		ttd<-timedft[timedft$anno==anno&timedft$doy==giorno,]
+		UR<-dew2ur(ttd$t2m,ttd$d2m)
 		#collecting output variables
-		Rain<-sum(rara$rain)
-		Rad<-sum(rara$rad)
-		RHmin<-min(ttd$d2m)
-		RHmax<-max(ttd$d2m)
+		Rain<-scumulo(rara$rain)
+		Rad<-scumulo(rara$rad)
+		RHmin<-min(UR)
+		RHmax<-max(UR)
 		Tmin<-min(ttd$t2m)
 		Tmax<-max(ttd$t2m)
-		Wind<-sum(sqrt(ttd$v10^2+ttd$u10^2))
+		Wind<-mean(sqrt(ttd$v10^2+ttd$u10^2))
 		return(as.numeric(c(Tmax,Tmin,Rain,Rad,RHmax,RHmin,Wind)))
 }
 
@@ -185,5 +241,5 @@ meteo<-data.frame(data=as.character(headMeteo$data),
 names(meteo)<-c("Date","Year","Doy","Tmax","Tmin","Rain","Rad","RHmax","RHmin","Wind")
 
 
-write.table(meteo,paste(posto,".dat".sep=""),eol = "\r\n",row.names=F,sep="\t",quote=F)
-zip("/home/cassandra/Desktop/fileMeteo.zip",paste(posto,".dat".sep=""))
+write.table(meteo,paste(posto,".dat",sep=""),eol = "\r\n",row.names=F,sep="\t",quote=F)
+zip("/home/cassandra/Desktop/fileMeteo.zip",paste(posto,".dat",sep=""))
