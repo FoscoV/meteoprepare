@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=cliccamiDopoAverScaricatoDaECMWF
+Comment=start processing ECMWF DOWNLOADED data
+Exec=bash /home/cassandra/undBon.sh
+Icon=gnome-session-hibernate
+Path=/home/cassandra/Desktop
+Terminal=true
+StartupNotify=false

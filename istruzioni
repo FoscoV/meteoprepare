@@ -1,0 +1,68 @@
+#-1
+trova il token della banca assegato da ECMWF a confalonieri.
+il codice è 1210
+
+#1
+apri firefox: vai su
+ecaccess.ecmwf.int (home page)
+
+consiglio di segnare più di 30 minuti (ma è opzionale)
+userid è :
+ug9
+la password è nel token della banca
+ premi "log on"
+
+#2
+doppioclikka su meteo per entrare nella cartella
+in basso c'è :
+I want to upload files
+carica dbSites.csv
+(DEVE chiamarsi dbSites.csv e NON deve contenere spazi)
+
+#3
+lancia PuTTY e scegli doppiocliccando ecaccess.ecmwf.int
+e fai login (come con firefox) con il token della banca
+(accetta la domanda ulteriore con return/invio)
+digita:
+
+cd meteo
+./scriptGener.sh
+
+
+=================================
+#4-5
+aspetta qualche tempo (~giorni) che ECMWF elabori i dati
+=================================
+
+#6
+rifai login con PuTTY (vedi sopra)
+
+digita:
+./scaricaTutto.sh
+
+
+#7
+fai login con firefox (vedi sopra) e scarica il file DLmeteo.zip
+
+#8
+clicca su:
+
+cliccamiDopoAverScaricatoDaECMWF
+(orologio dormiente sul Desktop)
+
+
+#8.5
+non spaventarsi, ci impiega davvero tanto...
+Talvolta ECMWF provvede in un secondo momento ad un indicizzazione dei dati che ha generato.
+In assenza di questa indicizzazione ci si arresta aspettare davvero tanto.
+Se ti sembra che stia prendendo più tempo di quanto ragionevole, potrebbe essere il tuo caso. Per cui devi tornare al punto 5.
+#9
+sul Desktop, in fileMeteo.zip trovi i tuoi dati meteo.
+Nello stesso .zip c'è anche una cartella delta contenente i dati di delta climatico precipitazione(pr) e temperatura (tas).
+I delta sono elaborati per Giss ed HadGEM in ogni sito.
+
+
+NB:
+ogni volta che la procedura viene iniziata, sovrascrive se stessa.
+Il backup è sempre e comunque possibile ma esula dalla Presente.
+
